@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>User Profile</h2>
+    
+    <div style="text-align: left; display: inline-block;">
+        <p><strong>Username:</strong> {{ user.username }}</p>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Status:</strong> 
+            {% if user.is_superuser %}
+                <span style="color: yellow;">Admin (Superuser)</span>
+            {% else %}
+                User
+            {% endif %}
+        </p>
+
+        {% if user.is_superuser %}
+            <br>
+            <a href="/admin/">
+                <button style="background-color: blue;">Go to Admin Dashboard</button>
+            </a>
+        {% endif %}
+        </div>
+
+    <br><br>
+    <a href="{% url 'logout' %}"><button style="background:red;">Logout</button></a>
+{% endblock %}

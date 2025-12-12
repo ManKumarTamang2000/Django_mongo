@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Welcome, {{ user.username }}!</h1>
+    <p>You have successfully logged in.</p>
+    
+    {% if user.is_superuser %}
+        <p style="color: yellow;">You are an ADMIN</p>
+        <a href="/admin">Go to Admin Panel</a>
+    {% else %}
+        <p>You are a User</p>
+    {% endif %}
+    
+    <br><br>
+    <a href="{% url 'logout' %}"><button style="background:red;">Logout</button></a>
+{% endblock %}
