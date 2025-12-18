@@ -1,8 +1,11 @@
 # accounts/views.py
+import json
+import ollama
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+
 
 def signup_view(request):
     if request.method == 'POST':
@@ -38,3 +41,5 @@ def logout_view(request):
 @login_required
 def profile_view(request):
     return render(request, 'profile.html')
+
+

@@ -4,8 +4,8 @@
 <head>
     <title>Django Simple Login</title>
     <style>
+        /* --- YOUR EXISTING STYLES --- */
         body {
-            /* Set the background image */
             background-image: url('{% static "images/background.jpg" %}');
             background-size: cover;
             background-position: center;
@@ -20,30 +20,147 @@
             text-align: center;
         }
         .container {
-            background: rgba(0, 0, 0, 0.7); /* Dark see-through box */
+            background: rgba(0, 0, 0, 0.7);
             padding: 40px;
             border-radius: 10px;
             width: 300px;
         }
-        input {
-            margin: 10px 0;
-            padding: 10px;
-            width: 90%;
+        input { margin: 10px 0; padding: 10px; width: 90%; }
+        button { padding: 10px 20px; background: #28a745; color: white; border: none; cursor: pointer; }
+        a { color: #add8e6; }
+
+        /* --- NEW CHATBOT STYLES --- */
+        .chat-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #007bff; /* Blue */
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 60px;
+            font-size: 30px;
+            cursor: pointer;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
         }
-        button {
-            padding: 10px 20px;
-            background: #28a745;
+        .chat-box {
+            display: none;
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 350px;
+            height: 400px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+            flex-direction: column;
+            z-index: 1000;
+        }
+        .chat-header {
+            background: #007bff;
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+            border-radius: 10px 10px 0 0;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            color: black;
+            text-align: left;
+        }
+        .input-area {
+            display: flex;
+            border-top: 1px solid #ccc;
+        }
+        .input-area input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            outline: none;
+        }
+        .input-area button {
+            background: #007bff;
             color: white;
             border: none;
+            padding: 10px 20px;
             cursor: pointer;
         }
-        a { color: #add8e6; }
     </style>
 </head>
 <body>
+
     <div class="container">
         {% block content %}
         {% endblock %}
     </div>
+
+    <div class="chat-btn" onclick="toggleChat()">🤖</div>
+
+    <div class="chat-box" id="chatBox">
+        <div class="chat-header">Qwen 3 AI (8B)</div>
+        <div class="chat-messages" id="messages">
+            <p><strong>Bot:</strong> Hello! Ask me anything.</p>
+        </div>
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Ask Qwen..." onkeypress="handleEnter(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleChat() {
+            var box = document.getElementById('chatBox');
+            if (box.style.display === 'flex') {
+                box.style.display = 'none';
+            } else {
+                box.style.display = 'flex';
+            }
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        function sendMessage() {
+            var input = document.getElementById('userInput');
+            var message = input.value;
+            if (message.trim() === "") return;
+
+            var msgDiv = document.getElementById('messages');
+            
+            // Show User Message
+            msgDiv.innerHTML += `<p style="color: blue;"><strong>You:</strong> ${message}</p>`;
+            input.value = "";
+            msgDiv.scrollTop = msgDiv.scrollHeight;
+
+            // Show Thinking
+            var loadingId = "loading-" + Date.now();
+            msgDiv.innerHTML += `<p id="${loadingId}" style="color: gray;"><em>Thinking...</em></p>`;
+            msgDiv.scrollTop = msgDiv.scrollHeight;
+
+            // --- THIS IS WHERE THE FETCH COMMAND GOES ---
+            fetch('/chatbot/ask/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 'message': message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById(loadingId).remove();
+                msgDiv.innerHTML += `<p><strong>Bot:</strong> ${data.reply}</p>`;
+                msgDiv.scrollTop = msgDiv.scrollHeight;
+            })
+            .catch(error => {
+                document.getElementById(loadingId).remove();
+                msgDiv.innerHTML += `<p style="color:red;">Error connecting to Qwen.</p>`;
+            });
+        }
+    </script>
 </body>
 </html>
