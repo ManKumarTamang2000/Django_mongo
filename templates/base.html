@@ -2,9 +2,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Django Simple Login</title>
+    <title>Smart Farming Chatbot</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <style>
-        /* --- YOUR EXISTING STYLES --- */
+        /* --- GLOBAL STYLES --- */
         body {
             background-image: url('{% static "images/background.jpg" %}');
             background-size: cover;
@@ -12,85 +14,148 @@
             background-repeat: no-repeat;
             height: 100vh;
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: white;
             display: flex;
             justify-content: center;
             align-items: center;
-            text-align: center;
         }
-        .container {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 40px;
-            border-radius: 10px;
-            width: 300px;
-        }
-        input { margin: 10px 0; padding: 10px; width: 90%; }
-        button { padding: 10px 20px; background: #28a745; color: white; border: none; cursor: pointer; }
-        a { color: #add8e6; }
 
-        /* --- NEW CHATBOT STYLES --- */
+        .container {
+            background: rgba(0, 0, 0, 0.75);
+            padding: 40px;
+            border-radius: 15px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        
+        /* Form Inputs */
+        input[type="text"], input[type="password"], input[type="email"] { 
+            margin: 10px 0; padding: 12px; width: 90%; border-radius: 5px; border: none; 
+        }
+        button.action-btn { 
+            padding: 10px 20px; background: #28a745; color: white; border: none; 
+            cursor: pointer; border-radius: 5px; font-size: 16px; transition: 0.3s;
+        }
+        button.action-btn:hover { background: #218838; }
+        a { color: #add8e6; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* --- CHATBOT STYLES (WHATSAPP STYLE) --- */
         .chat-btn {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: #007bff; /* Blue */
+            background: #007bff;
             color: white;
-            width: 60px;
-            height: 60px;
+            width: 65px;
+            height: 65px;
             border-radius: 50%;
             text-align: center;
-            line-height: 60px;
-            font-size: 30px;
+            line-height: 65px;
+            font-size: 35px;
             cursor: pointer;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
             z-index: 1000;
         }
+        .chat-btn:hover { transform: scale(1.1); }
+
         .chat-box {
             display: none;
             position: fixed;
-            bottom: 90px;
+            bottom: 100px;
             right: 20px;
-            width: 350px;
-            height: 400px;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+            width: 380px;
+            height: 500px;
+            background: #f0f2f5; /* Light Gray Background */
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
             flex-direction: column;
+            overflow: hidden;
             z-index: 1000;
+            font-family: sans-serif;
         }
+
         .chat-header {
             background: #007bff;
             color: white;
-            padding: 10px;
+            padding: 15px;
             font-weight: bold;
-            border-radius: 10px 10px 0 0;
+            font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        .close-chat { cursor: pointer; font-size: 20px; }
+
         .chat-messages {
             flex: 1;
-            padding: 10px;
+            padding: 15px;
             overflow-y: auto;
-            color: black;
-            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
+
+        /* --- MESSAGE BUBBLES --- */
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .user-msg {
+            align-self: flex-end; /* Align Right */
+            background: #007bff;
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .bot-msg {
+            align-self: flex-start; /* Align Left */
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        /* Markdown Styling inside Bot Messages */
+        .bot-msg strong { color: #d63384; font-weight: 700; }
+        .bot-msg ul { padding-left: 20px; margin: 5px 0; }
+        .bot-msg li { margin-bottom: 5px; }
+
         .input-area {
             display: flex;
-            border-top: 1px solid #ccc;
+            padding: 10px;
+            background: white;
+            border-top: 1px solid #ddd;
         }
         .input-area input {
             flex: 1;
-            padding: 10px;
-            border: none;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
             outline: none;
+            margin: 0 10px 0 0;
         }
         .input-area button {
             background: #007bff;
             color: white;
             border: none;
             padding: 10px 20px;
+            border-radius: 20px;
             cursor: pointer;
+            font-weight: bold;
         }
+        .input-area button:hover { background: #0056b3; }
+
+        /* Thinking Animation */
+        .thinking { font-style: italic; color: gray; font-size: 12px; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -103,12 +168,17 @@
     <div class="chat-btn" onclick="toggleChat()">🤖</div>
 
     <div class="chat-box" id="chatBox">
-        <div class="chat-header">Qwen 3 AI (8B)</div>
-        <div class="chat-messages" id="messages">
-            <p><strong>Bot:</strong> Hello! Ask me anything.</p>
+        <div class="chat-header">
+            <span>Qwen AI Assistant</span>
+            <span class="close-chat" onclick="toggleChat()">✕</span>
         </div>
+        
+        <div class="chat-messages" id="messages">
+            <div class="message bot-msg">Hello! I am Qwen. How can I help you today?</div>
+        </div>
+        
         <div class="input-area">
-            <input type="text" id="userInput" placeholder="Ask Qwen..." onkeypress="handleEnter(event)">
+            <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleEnter(event)">
             <button onclick="sendMessage()">Send</button>
         </div>
     </div>
@@ -120,6 +190,7 @@
                 box.style.display = 'none';
             } else {
                 box.style.display = 'flex';
+                document.getElementById('userInput').focus();
             }
         }
 
@@ -133,18 +204,19 @@
             if (message.trim() === "") return;
 
             var msgDiv = document.getElementById('messages');
+
+            // 1. Add User Message (Blue Bubble, Right Side)
+            msgDiv.innerHTML += `<div class="message user-msg">${message}</div>`;
             
-            // Show User Message
-            msgDiv.innerHTML += `<p style="color: blue;"><strong>You:</strong> ${message}</p>`;
             input.value = "";
             msgDiv.scrollTop = msgDiv.scrollHeight;
 
-            // Show Thinking
+            // 2. Show "Thinking..." Text
             var loadingId = "loading-" + Date.now();
-            msgDiv.innerHTML += `<p id="${loadingId}" style="color: gray;"><em>Thinking...</em></p>`;
+            msgDiv.innerHTML += `<div id="${loadingId}" class="thinking">Qwen is typing...</div>`;
             msgDiv.scrollTop = msgDiv.scrollHeight;
 
-            // --- THIS IS WHERE THE FETCH COMMAND GOES ---
+            // 3. Send to Backend
             fetch('/chatbot/ask/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -152,13 +224,20 @@
             })
             .then(response => response.json())
             .then(data => {
+                // Remove loading text
                 document.getElementById(loadingId).remove();
-                msgDiv.innerHTML += `<p><strong>Bot:</strong> ${data.reply}</p>`;
+
+                // 4. Convert Markdown to HTML using 'marked' library
+                var formattedReply = marked.parse(data.reply);
+
+                // 5. Add Bot Message (White Bubble, Left Side)
+                msgDiv.innerHTML += `<div class="message bot-msg">${formattedReply}</div>`;
+                
                 msgDiv.scrollTop = msgDiv.scrollHeight;
             })
             .catch(error => {
                 document.getElementById(loadingId).remove();
-                msgDiv.innerHTML += `<p style="color:red;">Error connecting to Qwen.</p>`;
+                msgDiv.innerHTML += `<div class="message bot-msg" style="color:red;">Error connecting to Qwen.</div>`;
             });
         }
     </script>
