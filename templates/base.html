@@ -42,7 +42,7 @@
         a { color: #add8e6; text-decoration: none; }
         a:hover { text-decoration: underline; }
 
-        /* --- CHATBOT STYLES (WHATSAPP STYLE) --- */
+        /* --- CHATBOT STYLES --- */
         .chat-btn {
             position: fixed;
             bottom: 20px;
@@ -69,7 +69,7 @@
             right: 20px;
             width: 380px;
             height: 500px;
-            background: #f0f2f5; /* Light Gray Background */
+            background: #f0f2f5;
             border-radius: 15px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.4);
             flex-direction: column;
@@ -110,21 +110,20 @@
         }
 
         .user-msg {
-            align-self: flex-end; /* Align Right */
+            align-self: flex-end;
             background: #007bff;
             color: white;
             border-bottom-right-radius: 2px;
         }
 
         .bot-msg {
-            align-self: flex-start; /* Align Left */
+            align-self: flex-start;
             background: white;
             color: #333;
             border-bottom-left-radius: 2px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         
-        /* Markdown Styling inside Bot Messages */
         .bot-msg strong { color: #d63384; font-weight: 700; }
         .bot-msg ul { padding-left: 20px; margin: 5px 0; }
         .bot-msg li { margin-bottom: 5px; }
@@ -143,6 +142,12 @@
             outline: none;
             margin: 0 10px 0 0;
         }
+        /* Disable style for locked input */
+        .input-area input:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+
         .input-area button {
             background: #007bff;
             color: white;
@@ -153,8 +158,12 @@
             font-weight: bold;
         }
         .input-area button:hover { background: #0056b3; }
+        /* Disable style for locked button */
+        .input-area button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
 
-        /* Thinking Animation */
         .thinking { font-style: italic; color: gray; font-size: 12px; margin-left: 10px; }
     </style>
 </head>
@@ -165,7 +174,7 @@
         {% endblock %}
     </div>
 
-    <div class="chat-btn" onclick="toggleChat()">🤖</div>
+    <div class="chat-btn" onclick="toggleChat()">💬</div>
 
     <div class="chat-box" id="chatBox">
         <div class="chat-header">
@@ -179,7 +188,7 @@
         
         <div class="input-area">
             <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleEnter(event)">
-            <button onclick="sendMessage()">Send</button>
+            <button id="sendBtn" onclick="sendMessage()">Send</button>
         </div>
     </div>
 
@@ -198,20 +207,28 @@
             if (e.key === 'Enter') sendMessage();
         }
 
+        // --- UPDATED SEND FUNCTION (WITH LOCK) ---
         function sendMessage() {
             var input = document.getElementById('userInput');
+            var sendBtn = document.getElementById('sendBtn'); // Get the button
             var message = input.value;
+            
             if (message.trim() === "") return;
 
             var msgDiv = document.getElementById('messages');
 
-            // 1. Add User Message (Blue Bubble, Right Side)
+            // 1. Add User Message
             msgDiv.innerHTML += `<div class="message user-msg">${message}</div>`;
             
-            input.value = "";
+            // 🔒 LOCK INPUTS: Disable typing and clicking
+            input.disabled = true;
+            sendBtn.disabled = true;
+            input.placeholder = "Waiting for reply..."; 
+            input.value = ""; // Clear the box immediately
+            
             msgDiv.scrollTop = msgDiv.scrollHeight;
 
-            // 2. Show "Thinking..." Text
+            // 2. Show "Thinking..."
             var loadingId = "loading-" + Date.now();
             msgDiv.innerHTML += `<div id="${loadingId}" class="thinking">Qwen is typing...</div>`;
             msgDiv.scrollTop = msgDiv.scrollHeight;
@@ -225,19 +242,27 @@
             .then(response => response.json())
             .then(data => {
                 // Remove loading text
-                document.getElementById(loadingId).remove();
+                var loadingMsg = document.getElementById(loadingId);
+                if (loadingMsg) loadingMsg.remove();
 
-                // 4. Convert Markdown to HTML using 'marked' library
+                // Convert Markdown to HTML
                 var formattedReply = marked.parse(data.reply);
 
-                // 5. Add Bot Message (White Bubble, Left Side)
+                // Add Bot Message
                 msgDiv.innerHTML += `<div class="message bot-msg">${formattedReply}</div>`;
-                
                 msgDiv.scrollTop = msgDiv.scrollHeight;
             })
             .catch(error => {
-                document.getElementById(loadingId).remove();
+                var loadingMsg = document.getElementById(loadingId);
+                if (loadingMsg) loadingMsg.remove();
                 msgDiv.innerHTML += `<div class="message bot-msg" style="color:red;">Error connecting to Qwen.</div>`;
+            })
+            .finally(() => {
+                // 🔓 UNLOCK INPUTS: Runs after success OR error
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.placeholder = "Type a message..."; 
+                input.focus(); // Put cursor back in box for next question
             });
         }
     </script>
