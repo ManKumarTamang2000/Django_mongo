@@ -24,7 +24,7 @@ def start_watching():
         print(f"Connected to database: {db.name}")
         print(f"Using Embedding Model: {EMBED_MODEL}")
     except Exception as e:
-        print(f"❌ Connection Failed: {e}")
+        print(f" Connection Failed: {e}")
         return
 
     # ==========================================
@@ -65,14 +65,14 @@ def start_watching():
                             {"$set": {"embedding": []}}
                         )
 
-            time.sleep(5)
+            time.sleep(1)
 
         except Exception as e:
             print(f" Error in loop: {e}")
-            time.sleep(5)
+            time.sleep(1)
 
 # ==========================================
 # 3. SAFETY GUARD
 # ==========================================
 if __name__ == "__main__":
-    start_watching()
+    start_watching()                
