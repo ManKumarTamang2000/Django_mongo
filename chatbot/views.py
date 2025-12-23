@@ -16,7 +16,7 @@ try:
     client = pymongo.MongoClient(client_host)
     db = client["django_project"]
 except Exception as e:
-    print(f"⚠️ Database warning: {e}")
+    print(f"Database warning: {e}")
 
 
 EMBED_MODEL = "qwen3-embedding:0.6b"
@@ -107,7 +107,7 @@ def chat_view(request):
                 {'role': 'user', 'content': f"Context:\n{context_text}\n\nQuestion: {user_message}"},
             ])
 
-            print(f"✅ Time: {time.time() - start_time:.2f}s")
+            print(f"Time: {time.time() - start_time:.2f}s")
             return JsonResponse({'reply': response['message']['content']})
 
         except Exception as e:
@@ -115,7 +115,7 @@ def chat_view(request):
             return JsonResponse({'reply': "Error processing request."})
         
         finally:
-            # 🔓 UNLOCK THE SESSION
+            #  UNLOCK THE SESSION
             # This runs when the bot is done (or if it crashes), allowing the user to type again.
             request.session['is_bot_thinking'] = False
             request.session.modified = True
