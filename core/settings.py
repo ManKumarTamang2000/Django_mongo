@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'chatbot',
+    
 ]
 
 MIDDLEWARE = [
@@ -82,6 +83,15 @@ DATABASES = {
         'CLIENT': {
             'host': config('MONGO_URI')
         }
+    }
+}
+
+# CACHE CONFIGURATION (FAST CHAT)
+# =====================================
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "chatbot-cache",
     }
 }
 

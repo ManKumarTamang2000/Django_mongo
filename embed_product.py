@@ -5,60 +5,43 @@ import time
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-# PASTE YOUR MONGODB CONNECTION STRING HERE 
-MONGO_LINK = "mongodb+srv://nissanlama2020_db_user:nissan12345@cluster0.eloxgi6.mongodb.net/"
+MONGO_LINK = "mongodb+srv://nissanlama2020_db_user:Chhaano2019@cluster0.eloxgi6.mongodb.net/"
 
-# Database and Collection Names
 DB_NAME = "django_project"
-COLLECTION_NAME = "products"
+
+# All collections to process
+COLLECTIONS = ["buffaloes", "chickens", "goats"]
 
 # The AI Model
 EMBED_MODEL = "qwen3-embedding:0.6b"
 
-def start_embedding():
-    # --- Connect to MongoDB ---
-    try:
-        client = pymongo.MongoClient(MONGO_LINK)
-        db = client[DB_NAME]
-        collection = db[COLLECTION_NAME]
-        print(f"Connected to database: {DB_NAME}")
-    except Exception as e:
-        print(f"Connection Failed: {e}")
-        return
 
-    print("Starting embedding process...")
-    print("Looking for products without embeddings...")
-
-    # --- The Loop ---
-    # Find documents that DO NOT have an 'embedding' field yet
+def process_collection(collection):
+    print(f"\nProcessing collection: {collection.name}")
     products_to_process = collection.find({"embedding": {"$exists": False}})
     
     count = 0
     for product in products_to_process:
-        # 1. Get the data fields
-        # We combine Name + Description + Category to give the AI more info
-        name = product.get('name', '')
-        description = product.get('description', '')
-        category = product.get('category', '')
-        
-        # Combine them into one string
-        text_to_embed = f"{name} {description} {category}".strip()
+        animal_id = product.get('animal_id', '')
+        animal_type = product.get('type', '')
+        breed = product.get('breed', '')
+        gender = product.get('gender', '')
+        location = product.get('seller', {}).get('location', '')
 
-        # 2. Skip if empty
+        text_to_embed = f"{animal_type} {breed} {gender} {location}".strip()
+
         if not text_to_embed:
-            print(f"Skipping {name}: No text to embed.")
+            print(f"Skipping {animal_id}: No text to embed.")
             continue
 
-        print(f"Processing: {name}...")
+        print(f"Processing: {animal_id}...")
 
         try:
-            # 3. Generate Embedding
             response = ollama.embeddings(
                 model=EMBED_MODEL,
                 prompt=text_to_embed
             )
-            
-            # 4. Save back to MongoDB
+
             collection.update_one(
                 {'_id': product['_id']},
                 {'$set': {'embedding': response['embedding']}}
@@ -69,10 +52,36 @@ def start_embedding():
         except Exception as e:
             print(f"Error: {e}")
 
-    print(f"\n Finished! Processed {count} documents.")
+    print(f"Finished {collection.name}: {count} documents.")
+
+
+def start_embedding():
+    try:
+        client = pymongo.MongoClient(MONGO_LINK)
+        db = client[DB_NAME]
+        print(f"Connected to database: {DB_NAME}")
+    except Exception as e:
+        print(f"Connection Failed: {e}")
+        return
+
+    print("Starting embedding process...")
+
+    for col_name in COLLECTIONS:
+        collection = db[col_name]
+        process_collection(collection)
+
+    print("\nAll collections processed.")
+
 
 # ==========================================
-# SAFETY GUARD
+# AUTO EMBEDDING LOGIC
 # ==========================================
 if __name__ == "__main__":
-    start_embedding()
+    print("Initial embedding for existing data...")
+    start_embedding()   # Run once for all existing data
+
+    print("\nSwitching to auto-embedding mode (new data only)...")
+
+    while True:
+        time.sleep(45)  # check every 2 minutes
+        start_embedding()
