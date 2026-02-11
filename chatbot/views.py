@@ -1,62 +1,22 @@
 from django.shortcuts import render
 import json
 import ollama
-import numpy as np
-import pymongo
 import time
-from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from recommendation.vector_search import search_similar_animals
 
 # ==========================================
-# 1. SETUP & CACHE
+# CONFIG
 # ==========================================
-try:
-    client_host = settings.DATABASES['default']['CLIENT']['host']
-    client = pymongo.MongoClient(client_host)
-    db = client["django_project"]
-except Exception as e:
-    print(f"Database warning: {e}")
-    db = None
-
-
-EMBED_MODEL = "qwen3-embedding:0.6b"
 CHAT_MODEL = "qwen3:8b"
 
-# Global Cache (Keeps database in RAM for speed)
-PRODUCT_CACHE = []
-QUERY_CACHE = {}  # New: cache for repeated questions
+# Cache for repeated questions
+QUERY_CACHE = {}
 
-
-def load_products_into_memory():
-    global PRODUCT_CACHE
-    PRODUCT_CACHE = []
-    try:
-        collections = ["buffaloes"]
-        for col_name in collections:
-            items = list(db[col_name].find({"embedding": {"$exists": True}}))
-            for item in items:
-                vec = np.array(item['embedding'])
-                norm = np.linalg.norm(vec)
-
-                # Normalize vector once (faster later)
-                if norm != 0:
-                    vec = vec / norm
-
-                PRODUCT_CACHE.append({
-                    "data": item,
-                    "vector": vec,
-                })
-        print(f"Cache refreshed: {len(PRODUCT_CACHE)} items.")
-    except Exception as e:
-        print(f"Cache load error: {e}")
-
-
-# Load data once when server starts
-load_products_into_memory()
 
 # ==========================================
-# 2. CHAT VIEW (WITH BUSY LOCK)
+# CHAT VIEW
 # ==========================================
 @csrf_exempt
 def chat_view(request):
@@ -65,7 +25,7 @@ def chat_view(request):
     if not request.user.is_authenticated:
         return JsonResponse({'reply': "Please login first."})
 
-    # BUSY CHECK
+    # Busy check
     if request.session.get('is_bot_thinking', False):
         return JsonResponse({
             'reply': "I am still answering your previous question. Please wait..."
@@ -73,16 +33,12 @@ def chat_view(request):
 
     if request.method == 'POST':
 
-        # LOCK SESSION
+        # Lock session
         request.session['is_bot_thinking'] = True
         request.session.modified = True
 
         try:
             start_time = time.time()
-
-            # Auto-refresh cache
-            if not PRODUCT_CACHE:
-                load_products_into_memory()
 
             data = json.loads(request.body)
             user_message = data.get('message', '').strip().lower()
@@ -90,48 +46,32 @@ def chat_view(request):
             print(f"\nQuestion: {user_message}")
 
             # ======================================
-            # A. CHECK QUERY CACHE (FAST RESPONSE)
+            # A. CHECK QUERY CACHE
             # ======================================
             if user_message in QUERY_CACHE:
                 print("Returned from cache")
                 return JsonResponse({'reply': QUERY_CACHE[user_message]})
 
             # ======================================
-            # B. EMBEDDING
+            # B. VECTOR SEARCH (FROM RECOMMENDATION APP)
             # ======================================
-            response_embed = ollama.embeddings(
-                model=EMBED_MODEL,
-                prompt=user_message
-            )
-            query_vector = np.array(response_embed['embedding'])
-            query_norm = np.linalg.norm(query_vector)
-
-            if query_norm != 0:
-                query_vector = query_vector / query_norm
+            top_results = search_similar_animals(user_message, top_k=3)
 
             # ======================================
-            # C. FAST SEARCH (COSINE SIM)
-            # ======================================
-            matches = []
-            for entry in PRODUCT_CACHE:
-                score = np.dot(query_vector, entry['vector'])
-                if score > 0.25:
-                    matches.append((score, entry['data']))
-
-            matches.sort(key=lambda x: x[0], reverse=True)
-            top_results = matches[:3]
-
-            # ======================================
-            # D. CONTEXT BUILDING
+            # C. CONTEXT BUILDING
             # ======================================
             context_text = ""
             if top_results:
-                context_text = "Found items:\n"
-                for score, item in top_results:
-                    context_text += f"- {item.get('name')}: {item.get('description')}\n"
+                context_text = "Found animals:\n"
+                for item in top_results:
+                    context_text += (
+                        f"- ID: {item['animal_id']}, "
+                        f"{item['type']} ({item['breed']}), "
+                        f"Price: NPR {item['price']}\n"
+                    )
 
             # ======================================
-            # E. GENERATION
+            # D. GENERATION
             # ======================================
             print("Thinking...")
             response = ollama.chat(
@@ -139,7 +79,7 @@ def chat_view(request):
                 messages=[
                     {
                         'role': 'system',
-                        'content': "You are a helpful assistant. Use context to answer."
+                        'content': "You are a helpful livestock assistant. Use the provided context to answer the user."
                     },
                     {
                         'role': 'user',
@@ -150,7 +90,7 @@ def chat_view(request):
 
             reply = response['message']['content']
 
-            # Save to query cache
+            # Save to cache
             QUERY_CACHE[user_message] = reply
 
             print(f"Time: {time.time() - start_time:.2f}s")
@@ -161,7 +101,7 @@ def chat_view(request):
             return JsonResponse({'reply': "Error processing request."})
 
         finally:
-            # UNLOCK SESSION
+            # Unlock session
             request.session['is_bot_thinking'] = False
             request.session.modified = True
 
