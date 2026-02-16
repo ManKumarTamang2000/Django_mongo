@@ -53,9 +53,29 @@ def chat_view(request):
                 return JsonResponse({'reply': QUERY_CACHE[user_message]})
 
             # ======================================
-            # B. VECTOR SEARCH (FROM RECOMMENDATION APP)
+            # B. VECTOR SEARCH WITH FILTERS
             # ======================================
-            top_results = search_similar_animals(user_message, top_k=3)
+            max_price = None
+            location = None
+
+            words = user_message.split()
+
+            # Detect price like "under 100000"
+            for word in words:
+                if word.isdigit():
+                    max_price = int(word)
+
+            # Detect location keywords
+            for loc in ["chitwan", "butwal", "kathmandu", "pokhara"]:
+                if loc in user_message:
+                    location = loc
+
+            top_results = search_similar_animals(
+                user_message,
+                top_k=3,
+                max_price=max_price,
+                location=location
+            )
 
             # ======================================
             # C. CONTEXT BUILDING
@@ -67,6 +87,7 @@ def chat_view(request):
                     context_text += (
                         f"- ID: {item['animal_id']}, "
                         f"{item['type']} ({item['breed']}), "
+                        f"Location: {item.get('location', 'unknown')}, "
                         f"Price: NPR {item['price']}\n"
                     )
 

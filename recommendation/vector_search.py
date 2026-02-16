@@ -20,7 +20,7 @@ def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
-def search_similar_animals(query_text, top_k=5):
+def search_similar_animals(query_text, top_k=5, max_price=None, location=None):
     client = pymongo.MongoClient(MONGO_LINK)
     db = client[DB_NAME]
 
@@ -37,13 +37,27 @@ def search_similar_animals(query_text, top_k=5):
             if not emb:
                 continue
 
+            price = doc.get("price_npr")
+            doc_location = doc.get("seller", {}).get("location", "").lower()
+
+            # Price filter
+            if max_price is not None and price:
+                if price > max_price:
+                    continue
+
+            # Location filter
+            if location:
+                if location.lower() not in doc_location:
+                    continue
+
             score = cosine_similarity(query_vector, np.array(emb))
 
             results.append({
                 "animal_id": doc.get("animal_id"),
                 "type": doc.get("type"),
                 "breed": doc.get("breed"),
-                "price": doc.get("price_npr"),
+                "price": price,
+                "location": doc_location,
                 "score": float(score)
             })
 
